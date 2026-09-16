@@ -2,6 +2,11 @@
 
 The Amazon SageMaker Well-Architected MCP server provides agents with tools to validate SageMaker workloads against all six AWS Well-Architected Framework pillars: Security, Reliability, Performance Efficiency, Cost Optimization, Operational Excellence, and Sustainability.
 
+This server can be used two ways:
+
+* **Locally**, spawned by an MCP-compatible IDE (Kiro, Cursor, VS Code) over stdio — covered in the [Quickstart](#quickstart) below.
+* **Deployed to Amazon Bedrock AgentCore Runtime**, as a hosted, network-reachable service — see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Available Features
 
 ### Well-Architected Validation
@@ -76,7 +81,7 @@ The example below includes the `--allow-sensitive-data-access` flag for accessin
 
 Verify your setup by running the `/tools` command in the Kiro CLI to see the available SageMaker Well-Architected MCP tools.
 
-This server provides comprehensive Well-Architected validation for SageMaker workloads with 51 checks across all six pillars. For broader AWS API access and documentation lookup, you can also use [AWS API MCP Server](https://awslabs.github.io/mcp/servers/aws-api-mcp-server) and [AWS Documentation MCP Server](https://awslabs.github.io/mcp/servers/aws-documentation-mcp-server).
+This server provides comprehensive Well-Architected validation for SageMaker workloads with 50 checks across all six pillars. For broader AWS API access and documentation lookup, you can also use [AWS API MCP Server](https://awslabs.github.io/mcp/servers/aws-api-mcp-server) and [AWS Documentation MCP Server](https://awslabs.github.io/mcp/servers/aws-documentation-mcp-server).
 
 ## Configurations
 
@@ -207,7 +212,7 @@ When using the SageMaker Well-Architected MCP Server, consider the following:
 
 The SageMaker Well-Architected MCP Server performs only read-only operations, which is recommended and considered generally safe for production environments. Below are the tools available:
 
-* **Read-only mode (default)**: `validate_sagemaker_resource`, `validate_all_endpoints`, `list_sagemaker_resources`, `get_pillar_details`.
+* **Read-only mode (default)**: `validate_sagemaker_resource`, `validate_all_endpoints`, `validate_all_resources`, `list_sagemaker_resources`, `get_pillar_details`.
 
 #### `autoApprove` (optional)
 
@@ -230,6 +235,7 @@ An array within the MCP server definition that lists tool names to be automatica
       "autoApprove": [
         "validate_sagemaker_resource",
         "validate_all_endpoints",
+        "validate_all_resources",
         "list_sagemaker_resources",
         "get_pillar_details"
       ]
@@ -257,6 +263,7 @@ An array within the MCP server definition that lists tool names to be automatica
       "autoApprove": [
         "validate_sagemaker_resource",
         "validate_all_endpoints",
+        "validate_all_resources",
         "list_sagemaker_resources",
         "get_pillar_details"
       ]
@@ -290,15 +297,10 @@ In accordance with security best practices, we recommend the following:
 * Configure proper IAM roles for service accounts.
 * Use IAM roles for service accounts (IRSA) for AWS service access.
 
-### File System Access and Operating Mode
+### File System Access
 
-**Important**: This MCP server is intended for **STDIO mode only** as a local server using a single user's credentials. The server runs with the same permissions as the user who started it and has complete access to the file system.
-
-#### Security and Access Considerations
-
-- **Read-Only Operations**: The server does not write to the file system or modify any AWS resources
-- **Host Credentials**: The server uses the host's AWS credentials configuration
-- **Do Not Modify for Network Use**: This server is designed for local STDIO use only; network operation introduces additional security risks
+- **Read-Only Operations**: The server does not write to the file system or modify any AWS resources.
+- **Host Credentials**: When run locally over stdio, the server uses the host's AWS credentials configuration. When deployed to Amazon Bedrock AgentCore Runtime, it uses the execution role attached to the runtime instead — see [DEPLOYMENT.md](DEPLOYMENT.md) for details.
 
 ## General Best Practices
 

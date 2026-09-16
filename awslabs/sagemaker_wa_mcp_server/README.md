@@ -6,13 +6,13 @@ This document details all validation checks performed by the SageMaker Well-Arch
 
 | Pillar | Checks |
 |--------|:------:|
-| [Operational Excellence](#operational-excellence) | 10 |
-| [Security](#security) | 21 |
+| [Operational Excellence](#operational-excellence) | 8 |
+| [Security](#security) | 14 |
 | [Reliability](#reliability) | 10 |
-| [Performance Efficiency](#performance-efficiency) | 8 |
-| [Cost Optimization](#cost-optimization) | 9 |
-| [Sustainability](#sustainability) | 7 |
-| **Total** | **65** |
+| [Performance Efficiency](#performance-efficiency) | 6 |
+| [Cost Optimization](#cost-optimization) | 8 |
+| [Sustainability](#sustainability) | 5 |
+| **Total (unique checks)** | **50** |
 
 ---
 
@@ -33,7 +33,6 @@ Run and monitor systems to deliver business value and continually improve proces
 | Check ID | Description | Severity | Resource Types |
 |----------|-------------|:--------:|----------------|
 | `no-model-registry` | Ensures models are registered and versioned in Model Registry for governance and traceability | MEDIUM | Endpoint |
-| `no-sagemaker-project` | Checks if SageMaker Projects are used to standardize MLOps workflows and templates | LOW | Endpoint |
 
 ### Alerting & Incident Response
 
@@ -41,12 +40,6 @@ Run and monitor systems to deliver business value and continually improve proces
 |----------|-------------|:--------:|----------------|
 | `no-error-alarms` | Verifies CloudWatch alarms are configured to alert on endpoint 4XX and 5XX invocation errors | HIGH | Endpoint |
 | `no-latency-alarms` | Confirms alarms exist to monitor and alert on high model latency affecting user experience | MEDIUM | Endpoint |
-
-### Tagging & Organization
-
-| Check ID | Description | Severity | Resource Types |
-|----------|-------------|:--------:|----------------|
-| `missing-operational-tags` | Validates operational tags (Environment, Team, Application) are present for resource organization | LOW | All |
 
 ### Scaling
 
@@ -72,7 +65,6 @@ Protect data, systems, and assets through risk assessments and mitigation strate
 |----------|-------------|:--------:|----------------|
 | `no-iam-role` | Validates that SageMaker resources use IAM roles (not user credentials) for secure access control | HIGH | All |
 | `overly-permissive-role` | Lists SageMaker-related IAM roles for regular security review and least-privilege validation | HIGH | All |
-| `no-iam-access-analyzer` | Confirms IAM Access Analyzer is enabled to identify unintended resource access | MEDIUM | All |
 
 ### Network Security
 
@@ -87,7 +79,6 @@ Protect data, systems, and assets through risk assessments and mitigation strate
 
 | Check ID | Description | Severity | Resource Types |
 |----------|-------------|:--------:|----------------|
-| `encryption-at-rest` | Verifies all SageMaker resources use KMS encryption at rest for data protection | HIGH | All |
 | `s3-no-encryption` | Confirms S3 buckets storing training data and models have encryption enabled | HIGH | Training Job, Model |
 | `s3-no-versioning` | Validates S3 bucket versioning is enabled for data protection and recovery | MEDIUM | Training Job, Model |
 | `no-kms-key-rotation` | Ensures KMS keys have automatic rotation enabled for enhanced security posture | MEDIUM | All (KMS-encrypted) |
@@ -98,17 +89,7 @@ Protect data, systems, and assets through risk assessments and mitigation strate
 |----------|-------------|:--------:|----------------|
 | `root-access` | Confirms root access is disabled on production notebook instances to limit security exposure | MEDIUM | Notebook |
 | `no-cloudtrail` | Verifies CloudTrail is logging all SageMaker API calls for audit and compliance | HIGH | All |
-| `s3-no-access-logging` | Confirms S3 access logging is enabled for audit trails of data access patterns | LOW | Training Job, Model |
 | `no-aws-config` | Validates AWS Config is actively recording SageMaker resource configurations for compliance | MEDIUM | All |
-| `no-guardduty` | Confirms GuardDuty is enabled for intelligent threat detection across AWS resources | MEDIUM | All |
-| `no-security-hub` | Verifies Security Hub is enabled for centralized security findings and compliance checks | MEDIUM | All |
-
-### Compliance & Governance
-
-| Check ID | Description | Severity | Resource Types |
-|----------|-------------|:--------:|----------------|
-| `no-data-classification-tags` | Validates resources have appropriate tags for data classification and governance tracking | LOW | All |
-| `no-sagemaker-config-rules` | Confirms SageMaker-specific AWS Config rules are enabled for automated compliance monitoring | LOW | All |
 
 ### Data In Transit
 
@@ -163,17 +144,10 @@ Use computing resources efficiently to meet requirements and maintain efficiency
 
 | Check ID | Description | Severity | Resource Types |
 |----------|-------------|:--------:|----------------|
-| `instance-type-review` | Reviews endpoint instance types to ensure they match workload requirements (CPU/GPU/memory) | LOW | Endpoint |
 | `underutilized-endpoint` | Analyzes CloudWatch metrics to identify over-provisioned instances for right-sizing | MEDIUM | Endpoint |
 | `overutilized-endpoint` | Analyzes CloudWatch metrics to identify under-provisioned instances for right-sizing | MEDIUM | Endpoint |
 | `older-instance-generation` | Flags older generation instance types (m4/c4/p2) for upgrade consideration | MEDIUM | Endpoint, Training Job |
 | `older-notebook-instance` | Flags older notebook instance types (t2/m4) for upgrade consideration | LOW | Notebook |
-
-### Model Optimization
-
-| Check ID | Description | Severity | Resource Types |
-|----------|-------------|:--------:|----------------|
-| `no-neo-compilation` | Checks if models are compiled with SageMaker Neo for optimized inference performance | LOW | Endpoint, Model |
 
 ### Data & Monitoring
 
@@ -204,12 +178,6 @@ Avoid unnecessary costs and optimize spending.
 | `consider-serverless` | Suggests serverless inference for single-instance endpoints with intermittent traffic | LOW | Endpoint |
 | `large-training-volume` | Flags oversized training volumes (>500 GB) for review | LOW | Training Job |
 
-### Cost Monitoring
-
-| Check ID | Description | Severity | Resource Types |
-|----------|-------------|:--------:|----------------|
-| `missing-cost-tags` | Validates resources have cost allocation tags for accurate cost tracking and chargeback | LOW | All |
-
 ### Storage Cost Optimization
 
 | Check ID | Description | Severity | Resource Types |
@@ -229,7 +197,6 @@ Minimize environmental impacts of running cloud workloads.
 |----------|-------------|:--------:|----------------|
 | `consider-graviton-endpoint` | Checks if endpoints use AWS Graviton instances for up to 60% less energy consumption | LOW | Endpoint |
 | `consider-graviton` | Suggests Graviton-based instances for training jobs where compatible | LOW | Training Job |
-| `spot-for-sustainability` | Recommends spot training to use spare capacity and improve infrastructure utilization | LOW | Training Job |
 
 ### Resource Lifecycle Management
 
@@ -238,7 +205,6 @@ Minimize environmental impacts of running cloud workloads.
 | `long-running-endpoint` | Lists active endpoints running >90 days for review and cleanup of unused resources | LOW | Endpoint |
 | `stale-notebook` | Identifies notebook instances stopped >30 days that should be reviewed for potential deletion | LOW | Notebook |
 | `oversized-notebook` | Flags potentially oversized notebook instances for right-sizing | LOW | Notebook |
-| `no-lifecycle-tags` | Validates resources have lifecycle tags (CreatedDate, ExpiryDate) for automated cleanup | LOW | All |
 
 ---
 
@@ -249,13 +215,13 @@ The validation checks query the following AWS services (all read-only operations
 | AWS Service | Purpose |
 |-------------|---------|
 | Amazon SageMaker | Resource descriptions, tags, endpoint configs, model details |
-| Amazon CloudWatch | Metrics, alarms, log groups, log retention |
-| Amazon S3 | Bucket encryption, versioning, lifecycle policies, access logging, replication, Intelligent-Tiering |
-| AWS IAM | Role policies, IAM Access Analyzer |
+| Amazon CloudWatch | Metrics, alarms, log groups |
+| Amazon S3 | Bucket encryption, versioning, lifecycle policies, replication, Intelligent-Tiering |
+| AWS IAM | Attached role policy listing |
 | Amazon EC2 | VPC endpoints, VPC Flow Logs, subnet-to-VPC resolution |
 | AWS CloudTrail | Trail status and logging verification |
-| AWS Config | Configuration recorder status, Config rules |
-| Amazon GuardDuty | Detector status |
-| AWS Security Hub | Hub enablement status |
+| AWS Config | Configuration recorder status |
+| AWS Key Management Service (KMS) | Key rotation status |
 | AWS Service Quotas | SageMaker endpoint instance quotas |
 | Application Auto Scaling | Scalable targets and scaling policies |
+| AWS STS | Caller identity resolution |

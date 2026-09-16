@@ -115,12 +115,34 @@ SERVER_DEPENDENCIES = [
 mcp = None
 
 
-def create_server():
-    """Create and configure the MCP server instance."""
+def create_server(transport: str = 'stdio'):
+    """Create and configure the MCP server instance.
+
+    Args:
+        transport: The MCP transport that will be used to run the server.
+            'stdio' (default) requires no network configuration — the client
+            spawns this process and communicates over stdin/stdout.
+            'streamable-http' binds to a host/port for network-reachable
+            deployments such as Amazon Bedrock AgentCore Runtime, which
+            requires the server to listen on 0.0.0.0:8000 and expose POST /mcp
+            in stateless mode.
+    """
+    server_kwargs = {
+        'instructions': SERVER_INSTRUCTIONS,
+        'dependencies': SERVER_DEPENDENCIES,
+    }
+
+    if transport == 'streamable-http':
+        # Required by Amazon Bedrock AgentCore Runtime's MCP protocol contract:
+        # host 0.0.0.0, port 8000, stateless HTTP so the platform-issued
+        # Mcp-Session-Id header is accepted rather than rejected.
+        server_kwargs['host'] = '0.0.0.0'
+        server_kwargs['port'] = 8000
+        server_kwargs['stateless_http'] = True
+
     return FastMCP(
         'awslabs.sagemaker-wa-mcp-server',
-        instructions=SERVER_INSTRUCTIONS,
-        dependencies=SERVER_DEPENDENCIES,
+        **server_kwargs,
     )
 
 
@@ -141,6 +163,17 @@ def main():
         default=False,
         help='Enable sensitive data access (required for reading detailed resource configurations)',
     )
+    parser.add_argument(
+        '--transport',
+        choices=['stdio', 'streamable-http'],
+        default='stdio',
+        help=(
+            "MCP transport to use. 'stdio' (default) is for local IDE/CLI use "
+            "(e.g. Kiro, Cursor) where the client spawns this process directly. "
+            "'streamable-http' is for hosted environments such as Amazon Bedrock "
+            'AgentCore Runtime, which requires a network-reachable server.'
+        ),
+    )
 
     args = parser.parse_args()
     allow_sensitive_data_access = args.allow_sensitive_data_access
@@ -150,16 +183,19 @@ def main():
         mode_info.append('restricted sensitive data access mode')
 
     mode_str = ' in ' + ', '.join(mode_info) if mode_info else ''
-    logger.info(f'Starting SageMaker Well-Architected MCP Server{mode_str}')
+    logger.info(
+        f'Starting SageMaker Well-Architected MCP Server{mode_str} '
+        f'(transport={args.transport})'
+    )
 
     # Create the MCP server instance
-    mcp = create_server()
+    mcp = create_server(transport=args.transport)
 
     # Initialize handler — all tools are registered, access control is handled within
     WellArchitectedValidationHandler(mcp, allow_sensitive_data_access)
 
     # Run server
-    mcp.run()
+    mcp.run(transport=args.transport)
 
     return mcp
 
