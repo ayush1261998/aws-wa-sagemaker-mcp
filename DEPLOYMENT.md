@@ -163,6 +163,68 @@ requests for session/microVM affinity — see
 [MCP session management](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp-protocol-contract.html#mcp-session-management-and-microvm-stickiness)
 for details.
 
+## Connect an IDE to the deployed server
+
+You can point Kiro, Cursor, or VS Code at the deployed runtime instead of
+running the server locally. Since these clients don't sign SigV4 requests
+natively, configure them to launch
+[`mcp-proxy-for-aws-cli`](https://github.com/aws/mcp-proxy-for-aws), a
+small local proxy that signs each request with your local AWS credentials
+and forwards it to the runtime. The client still launches a local process
+(same as the local Quickstart), but that process talks to the remote
+runtime instead of running the SageMaker WA MCP server itself.
+
+Replace `YOUR_ENCODED_ARN` with the runtime ARN from [Deploy](#deploy),
+URL-encoded as described in [Invoke the deployed server](#invoke-the-deployed-server).
+
+**For Mac/Linux:**
+
+```json
+{
+  "mcpServers": {
+    "awslabs.sagemaker-wa-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws-cli@latest",
+        "https://bedrock-agentcore.REGION.amazonaws.com/runtimes/YOUR_ENCODED_ARN/invocations?qualifier=DEFAULT",
+        "--service",
+        "bedrock-agentcore",
+        "--region",
+        "REGION"
+      ]
+    }
+  }
+}
+```
+
+**For Windows:**
+
+```json
+{
+  "mcpServers": {
+    "awslabs.sagemaker-wa-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcp-proxy-for-aws-cli@latest",
+        "mcp-proxy-for-aws-cli.exe",
+        "https://bedrock-agentcore.REGION.amazonaws.com/runtimes/YOUR_ENCODED_ARN/invocations?qualifier=DEFAULT",
+        "--service",
+        "bedrock-agentcore",
+        "--region",
+        "REGION"
+      ]
+    }
+  }
+}
+```
+
+The proxy uses your local AWS credentials (the same `AWS_PROFILE`/
+`AWS_REGION` resolution as the local Quickstart) to sign requests — the
+deployed server itself still runs under its own execution role; your local
+credentials only need permission to invoke the AgentCore runtime, not to
+call SageMaker/CloudWatch/etc. directly.
+
 ## Troubleshooting
 
 **Tools not appearing / `AccessDenied` on tool calls** — check the

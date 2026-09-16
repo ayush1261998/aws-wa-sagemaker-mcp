@@ -17,3 +17,6 @@ wa-report.html
 
 # Kiro local settings
 .kiro/
+
+# macOS
+.DS_Store
