@@ -77,6 +77,14 @@ The execution role is completely separate from any local AWS credentials.
 All AWS API calls the deployed server makes use the execution role you
 specify — never credentials from whoever is calling the runtime.
 
+### Scoping access per team or environment
+
+Every caller that successfully authenticates against a deployed runtime
+shares that runtime's execution role and AWS permissions. If different
+teams or environments need different AWS access, deploy separate stacks
+(each with its own execution role) rather than sharing one runtime across
+them.
+
 ## Prerequisites
 
 * An AWS account with permissions to create IAM roles, ECR repositories,
@@ -155,22 +163,6 @@ requests for session/microVM affinity — see
 [MCP session management](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp-protocol-contract.html#mcp-session-management-and-microvm-stickiness)
 for details.
 
-## Limitations
-
-* **Stateless by default.** This stack does not set `authorizer_configuration`
-  or otherwise enable stateful mode, so multi-turn interactions
-  (elicitation) and LLM-generated content (sampling) are not available in
-  this default configuration.
-* **Single execution role for all callers.** Every invocation of this
-  runtime uses the same execution role and therefore the same AWS
-  permissions, regardless of caller identity — this deployment is not
-  multi-tenant. Deploy separate stacks/runtimes if different callers need
-  different AWS access.
-* **`cdk/` must stay excluded from the Docker build context.** The
-  repo's `.dockerignore` excludes the `cdk` directory; removing that
-  exclusion causes the CDK asset bundler to recursively copy `cdk/`'s own
-  output directory into itself.
-
 ## Troubleshooting
 
 **Tools not appearing / `AccessDenied` on tool calls** — check the
@@ -179,13 +171,6 @@ validating actually needs; see
 [`awslabs/sagemaker_wa_mcp_server/README.md`](awslabs/sagemaker_wa_mcp_server/README.md)'s
 service table. Use CloudTrail to confirm which role executed a given API
 call.
-
-**`cdk deploy` fails with a schema/version error** — the CDK CLI is older
-than what your installed `aws-cdk-lib` requires. Update with
-`npm install -g aws-cdk@latest`.
-
-**`cdk synth`/`cdk deploy` fails with `ENOSPC` or excessive build time** —
-confirm `.dockerignore` still excludes `cdk` (see Limitations above).
 
 **Connection refused / handshake fails** — confirm the runtime status is
 `READY` (see Verify the deployment above), and that your request includes
