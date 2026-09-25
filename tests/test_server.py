@@ -143,3 +143,36 @@ async def test_handler_tool_registration():
     assert 'validate_all_resources' in tool_names
     assert 'list_sagemaker_resources' in tool_names
     assert 'get_pillar_details' in tool_names
+
+
+@pytest.mark.asyncio
+async def test_tool_result_is_not_double_wrapped():
+    """Regression: tool results must be a single, un-nested CallToolResult.
+
+    The bug: tools returned a custom model that shadowed mcp.types.CallToolResult,
+    so FastMCP JSON-dumped the whole object into the result text — producing a
+    tool response whose text contained another tool response (a 'content' key).
+    """
+    import json
+    from awslabs.sagemaker_wa_mcp_server.server import create_server
+    from mcp.types import CallToolResult
+
+    mcp = create_server()
+    WellArchitectedValidationHandler(mcp)
+
+    # get_pillar_details needs no AWS calls.
+    result = await mcp.call_tool('get_pillar_details', {'pillar': 'security'})
+
+    assert isinstance(result, CallToolResult)
+    assert result.isError is False
+
+    text = result.content[0].text
+    parsed = json.loads(text)
+    # Clean result: the text is the pillar payload itself, with no nested
+    # 'content' envelope (the double-wrap signature).
+    assert 'content' not in parsed
+    assert parsed['name']
+
+    # Structured data rides in structuredContent, not buried in the text.
+    assert result.structuredContent is not None
+    assert result.structuredContent['name'] == parsed['name']

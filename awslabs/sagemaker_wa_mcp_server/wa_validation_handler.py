@@ -27,13 +27,9 @@ from awslabs.sagemaker_wa_mcp_server.consts import (
 from awslabs.sagemaker_wa_mcp_server.logging_helper import LogLevel, log_with_request_id
 from awslabs.sagemaker_wa_mcp_server.models import (
     Finding,
-    ListResourcesResponse,
     PillarCheck,
-    PillarInfoResponse,
     PillarSummary,
     ResourceSummary,
-    ValidateAllResponse,
-    ValidateResourceResponse,
 )
 from awslabs.sagemaker_wa_mcp_server.report_generator import (
     generate_batch_html_report,
@@ -41,9 +37,28 @@ from awslabs.sagemaker_wa_mcp_server.report_generator import (
 from awslabs.sagemaker_wa_mcp_server.validators import run_all_validators
 from botocore.exceptions import ClientError
 from mcp.server.fastmcp import Context
-from mcp.types import TextContent
+from mcp.types import CallToolResult, TextContent
 from pydantic import Field, validate_call
 from typing import Optional
+
+
+def _tool_result(
+    text: str,
+    structured: Optional[dict] = None,
+    is_error: bool = False,
+) -> CallToolResult:
+    """Build a proper MCP tool result.
+
+    Puts the human-readable summary in ``content`` and any machine-readable
+    payload in ``structuredContent``, returning the real
+    ``mcp.types.CallToolResult`` so FastMCP passes it through unchanged instead
+    of serializing a wrapper model into a nested tool response.
+    """
+    return CallToolResult(
+        content=[TextContent(type='text', text=text)],
+        structuredContent=structured,
+        isError=is_error,
+    )
 
 
 # Pillar metadata for the pillar_info tool
@@ -478,7 +493,7 @@ class WellArchitectedValidationHandler:
             None,
             description='AWS profile name. If not provided, uses the default profile.',
         ),
-    ) -> ValidateResourceResponse:
+    ) -> CallToolResult:
         """Validate a SageMaker resource against all Well-Architected Framework pillars.
 
         Checks security, reliability, performance efficiency, cost optimization,
@@ -510,7 +525,7 @@ class WellArchitectedValidationHandler:
             profile_name: AWS profile name (optional)
 
         Returns:
-            ValidateResourceResponse with findings and summary
+            CallToolResult with findings and summary
         """
         try:
             log_with_request_id(
@@ -535,35 +550,23 @@ class WellArchitectedValidationHandler:
                 summary,
             )
 
-            return ValidateResourceResponse(
-                content=[TextContent(type='text', text=result_text)],
-                resource=resource_name,
-                resource_type=resource_type,
-                summary=summary,
-                findings=findings,
+            return _tool_result(
+                result_text,
+                {
+                    'resource': resource_name,
+                    'resource_type': resource_type,
+                    'summary': {k: v.model_dump() for k, v in summary.items()},
+                    'findings': [f.model_dump() for f in findings],
+                },
             )
         except ClientError as e:
             error_text = f'AWS API error: {str(e)}'
             log_with_request_id(ctx, LogLevel.ERROR, error_text)
-            return ValidateResourceResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-                resource=resource_name,
-                resource_type=resource_type,
-                summary={},
-                findings=[],
-            )
+            return _tool_result(error_text, is_error=True)
         except Exception as e:
             error_text = f'Validation error: {str(e)}'
             log_with_request_id(ctx, LogLevel.ERROR, error_text)
-            return ValidateResourceResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-                resource=resource_name,
-                resource_type=resource_type,
-                summary={},
-                findings=[],
-            )
+            return _tool_result(error_text, is_error=True)
 
     @validate_call
     async def validate_all_endpoints(
@@ -577,7 +580,7 @@ class WellArchitectedValidationHandler:
             None,
             description='AWS profile name. If not provided, uses the default profile.',
         ),
-    ) -> ValidateAllResponse:
+    ) -> CallToolResult:
         """Validate all SageMaker endpoints in a region against Well-Architected pillars.
 
         Scans all endpoints in the specified region and returns aggregated findings
@@ -589,7 +592,7 @@ class WellArchitectedValidationHandler:
             profile_name: AWS profile name (optional)
 
         Returns:
-            ValidateAllResponse with aggregated findings
+            CallToolResult with aggregated findings
         """
         try:
             log_with_request_id(ctx, LogLevel.INFO, f'Validating all endpoints in {region_name}')
@@ -623,24 +626,19 @@ class WellArchitectedValidationHandler:
                 summary,
             )
 
-            return ValidateAllResponse(
-                content=[TextContent(type='text', text=result_text)],
-                resources_validated=validated,
-                total_findings=len(typed_findings),
-                summary=summary,
-                findings=typed_findings,
+            return _tool_result(
+                result_text,
+                {
+                    'resources_validated': validated,
+                    'total_findings': len(typed_findings),
+                    'summary': {k: v.model_dump() for k, v in summary.items()},
+                    'findings': [f.model_dump() for f in typed_findings],
+                },
             )
         except ClientError as e:
             error_text = f'AWS API error: {str(e)}'
             log_with_request_id(ctx, LogLevel.ERROR, error_text)
-            return ValidateAllResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-                resources_validated=[],
-                total_findings=0,
-                summary={},
-                findings=[],
-            )
+            return _tool_result(error_text, is_error=True)
 
     @validate_call
     async def validate_all_resources(
@@ -654,7 +652,7 @@ class WellArchitectedValidationHandler:
             None,
             description='AWS profile name. If not provided, uses the default profile.',
         ),
-    ) -> ValidateAllResponse:
+    ) -> CallToolResult:
         """Validate all SageMaker resources in a region against Well-Architected pillars.
 
         Scans all endpoints, training jobs, notebook instances, and models in the
@@ -667,7 +665,7 @@ class WellArchitectedValidationHandler:
             profile_name: AWS profile name (optional)
 
         Returns:
-            ValidateAllResponse with aggregated findings and path to HTML report
+            CallToolResult with aggregated findings and path to HTML report
         """
         try:
             log_with_request_id(
@@ -800,24 +798,19 @@ class WellArchitectedValidationHandler:
                 report_path,
             )
 
-            return ValidateAllResponse(
-                content=[TextContent(type='text', text=result_text)],
-                resources_validated=validated,
-                total_findings=len(typed_findings),
-                summary=summary,
-                findings=typed_findings,
+            return _tool_result(
+                result_text,
+                {
+                    'resources_validated': validated,
+                    'total_findings': len(typed_findings),
+                    'summary': {k: v.model_dump() for k, v in summary.items()},
+                    'findings': [f.model_dump() for f in typed_findings],
+                },
             )
         except Exception as e:
             error_text = f'Validation error: {str(e)}'
             log_with_request_id(ctx, LogLevel.ERROR, error_text)
-            return ValidateAllResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-                resources_validated=[],
-                total_findings=0,
-                summary={},
-                findings=[],
-            )
+            return _tool_result(error_text, is_error=True)
 
     @validate_call
     async def list_sagemaker_resources(
@@ -831,7 +824,7 @@ class WellArchitectedValidationHandler:
             None,
             description='AWS profile name. If not provided, uses the default profile.',
         ),
-    ) -> ListResourcesResponse:
+    ) -> CallToolResult:
         """List SageMaker resources available for validation.
 
         Returns endpoints, training jobs, notebook instances, and models
@@ -843,24 +836,21 @@ class WellArchitectedValidationHandler:
             profile_name: AWS profile name (optional)
 
         Returns:
-            ListResourcesResponse with resource lists
+            CallToolResult with resource lists
         """
         try:
             log_with_request_id(
                 ctx, LogLevel.INFO, f'Listing SageMaker resources in {region_name}'
             )
             sm = self._get_sagemaker_client(ctx, region_name, profile_name)
-            result = ListResourcesResponse(
-                content=[],
-                endpoints=[],
-                training_jobs=[],
-                notebook_instances=[],
-                models=[],
-            )
+            endpoint_summaries: list[ResourceSummary] = []
+            training_job_summaries: list[ResourceSummary] = []
+            notebook_summaries: list[ResourceSummary] = []
+            model_summaries: list[ResourceSummary] = []
 
             try:
                 eps = sm.list_endpoints(MaxResults=50).get('Endpoints', [])
-                result.endpoints = [
+                endpoint_summaries = [
                     ResourceSummary(name=e['EndpointName'], status=e['EndpointStatus'])
                     for e in eps
                 ]
@@ -871,7 +861,7 @@ class WellArchitectedValidationHandler:
                 jobs = sm.list_training_jobs(
                     MaxResults=50, SortBy='CreationTime', SortOrder='Descending'
                 ).get('TrainingJobSummaries', [])
-                result.training_jobs = [
+                training_job_summaries = [
                     ResourceSummary(name=j['TrainingJobName'], status=j['TrainingJobStatus'])
                     for j in jobs
                 ]
@@ -880,7 +870,7 @@ class WellArchitectedValidationHandler:
 
             try:
                 nbs = sm.list_notebook_instances(MaxResults=50).get('NotebookInstances', [])
-                result.notebook_instances = [
+                notebook_summaries = [
                     ResourceSummary(
                         name=n['NotebookInstanceName'], status=n['NotebookInstanceStatus']
                     )
@@ -895,30 +885,23 @@ class WellArchitectedValidationHandler:
                 models = sm.list_models(
                     MaxResults=50, SortBy='CreationTime', SortOrder='Descending'
                 ).get('Models', [])
-                result.models = [ResourceSummary(name=m['ModelName']) for m in models]
+                model_summaries = [ResourceSummary(name=m['ModelName']) for m in models]
             except ClientError as e:
                 log_with_request_id(ctx, LogLevel.WARNING, f'Could not list models: {e}')
 
-            result_text = json.dumps(
-                {
-                    'endpoints': [e.model_dump() for e in result.endpoints],
-                    'training_jobs': [j.model_dump() for j in result.training_jobs],
-                    'notebook_instances': [n.model_dump() for n in result.notebook_instances],
-                    'models': [m.model_dump() for m in result.models],
-                },
-                indent=2,
-                default=str,
-            )
-            result.content = [TextContent(type='text', text=result_text)]
+            structured = {
+                'endpoints': [e.model_dump() for e in endpoint_summaries],
+                'training_jobs': [j.model_dump() for j in training_job_summaries],
+                'notebook_instances': [n.model_dump() for n in notebook_summaries],
+                'models': [m.model_dump() for m in model_summaries],
+            }
+            result_text = json.dumps(structured, indent=2, default=str)
 
-            return result
+            return _tool_result(result_text, structured)
         except Exception as e:
             error_text = f'Error listing resources: {str(e)}'
             log_with_request_id(ctx, LogLevel.ERROR, error_text)
-            return ListResourcesResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-            )
+            return _tool_result(error_text, is_error=True)
 
     @validate_call
     async def get_pillar_details(
@@ -927,7 +910,7 @@ class WellArchitectedValidationHandler:
         pillar: str = Field(
             description='Pillar name: security, reliability, performance, cost, operational_excellence, or sustainability.',
         ),
-    ) -> PillarInfoResponse:
+    ) -> CallToolResult:
         """Get detailed information about a specific Well-Architected pillar and its checks.
 
         Returns the pillar description and all validation checks that are performed
@@ -938,27 +921,23 @@ class WellArchitectedValidationHandler:
             pillar: Pillar name
 
         Returns:
-            PillarInfoResponse with pillar details and checks
+            CallToolResult with pillar details and checks
         """
         key = pillar.lower().replace(' ', '_').replace('-', '_')
         info = PILLAR_METADATA.get(key)
 
         if not info:
             error_text = f"Unknown pillar '{pillar}'. Valid: {list(PILLAR_METADATA.keys())}"
-            return PillarInfoResponse(
-                content=[TextContent(type='text', text=error_text)],
-                isError=True,
-                name=pillar,
-                description='',
-                checks=[],
-            )
+            return _tool_result(error_text, is_error=True)
 
         checks = [PillarCheck(**c) for c in info['checks']]
         result_text = json.dumps(info, indent=2)
 
-        return PillarInfoResponse(
-            content=[TextContent(type='text', text=result_text)],
-            name=info['name'],
-            description=info['description'],
-            checks=checks,
+        return _tool_result(
+            result_text,
+            {
+                'name': info['name'],
+                'description': info['description'],
+                'checks': [c.model_dump() for c in checks],
+            },
         )

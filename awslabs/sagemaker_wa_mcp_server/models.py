@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Data models for the SageMaker Well-Architected MCP Server."""
+"""Data models for the SageMaker Well-Architected MCP Server.
 
-from mcp.types import TextContent
+These are the structured data shapes the validators and tools build. Tools
+return their results as ``mcp.types.CallToolResult`` (human-readable text plus
+``structuredContent``); these models describe the structured payload rather
+than the MCP result envelope itself.
+"""
+
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
-
-
-class CallToolResult(BaseModel):
-    """Base class for tool call results with TextContent only."""
-
-    content: List[TextContent] = Field(..., description='Response content')
-    isError: bool = Field(False, description='Whether this is an error response')
+from typing import Optional
 
 
 class Finding(BaseModel):
@@ -45,26 +43,6 @@ class PillarSummary(BaseModel):
     LOW: int = Field(0, description='Number of LOW severity findings')
 
 
-class ValidateResourceResponse(CallToolResult):
-    """Response model for single resource validation."""
-
-    resource: str = Field(..., description='Name of the validated resource')
-    resource_type: str = Field(..., description='Type of the resource')
-    summary: Dict[str, PillarSummary] = Field(..., description='Findings summary by pillar')
-    findings: List[Finding] = Field(..., description='List of findings')
-
-
-class ValidateAllResponse(CallToolResult):
-    """Response model for batch validation."""
-
-    resources_validated: List[str] = Field(..., description='List of validated resource names')
-    total_findings: int = Field(..., description='Total number of findings')
-    summary: Dict[str, PillarSummary] = Field(
-        ..., description='Aggregated findings summary by pillar'
-    )
-    findings: List[Finding] = Field(..., description='List of all findings')
-
-
 class ResourceSummary(BaseModel):
     """Summary of a SageMaker resource."""
 
@@ -72,29 +50,8 @@ class ResourceSummary(BaseModel):
     status: Optional[str] = Field(None, description='Resource status')
 
 
-class ListResourcesResponse(CallToolResult):
-    """Response model for listing SageMaker resources."""
-
-    endpoints: List[ResourceSummary] = Field(default_factory=list, description='List of endpoints')
-    training_jobs: List[ResourceSummary] = Field(
-        default_factory=list, description='List of training jobs'
-    )
-    notebook_instances: List[ResourceSummary] = Field(
-        default_factory=list, description='List of notebook instances'
-    )
-    models: List[ResourceSummary] = Field(default_factory=list, description='List of models')
-
-
 class PillarCheck(BaseModel):
     """Description of a single validation check."""
 
     id: str = Field(..., description='Check identifier')
     description: str = Field(..., description='What this check validates')
-
-
-class PillarInfoResponse(CallToolResult):
-    """Response model for pillar information."""
-
-    name: str = Field(..., description='Pillar name')
-    description: str = Field(..., description='Pillar description')
-    checks: List[PillarCheck] = Field(..., description='List of checks for this pillar')
