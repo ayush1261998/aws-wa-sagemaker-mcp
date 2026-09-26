@@ -8,6 +8,35 @@ For running the server locally with an IDE (Kiro, Cursor, VS Code), see the
 [main README](README.md) — that path is unchanged and does not require
 anything in this guide.
 
+## Reference architecture
+
+```mermaid
+flowchart LR
+    A["Agent / application<br/>or IDE via mcp-proxy-for-aws"]
+    A -- "HTTPS + SigV4<br/>POST /mcp" --> B["Amazon Bedrock<br/>AgentCore Runtime"]
+    subgraph AWS["Your AWS account / region"]
+      B -- "pulls image" --> C[("Amazon ECR<br/>container image")]
+      B -- "runs" --> D["MCP server container<br/>streamable-http : 8000"]
+      D -- "assumes" --> E["IAM execution role<br/>(read-only + runtime ops)"]
+      E -- "Describe / List / Get" --> F["SageMaker, CloudWatch, S3,<br/>EC2, IAM, KMS, ..."]
+    end
+    D -- "WA findings<br/>(content + structuredContent)" --> A
+```
+
+1. A caller signs each MCP request with SigV4 and POSTs to the runtime's
+   `/mcp` endpoint.
+2. AgentCore Runtime runs the server container (image stored in Amazon ECR).
+3. The container serves MCP over streamable-HTTP on port 8000.
+4. It assumes the runtime's execution role — the read-only application
+   permissions plus the operational permissions the runtime needs (see
+   [Security Best Practices](#security-best-practices)).
+5. It calls SageMaker and related services with Describe / List / Get only.
+6. Well-Architected findings return to the caller.
+
+This architecture applies only to the hosted AgentCore path. Running locally
+(the [main README](README.md) quickstart) has no equivalent — your IDE spawns
+the server as a subprocess and it calls AWS with your local credentials.
+
 ## Local MCP vs. AgentCore Runtime — which do you need?
 
 | | Local MCP (stdio) | AgentCore Runtime (this guide) |

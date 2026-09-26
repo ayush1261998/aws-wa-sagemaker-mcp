@@ -1,11 +1,34 @@
 # Amazon SageMaker Well-Architected MCP Server
 
-The Amazon SageMaker Well-Architected MCP server provides agents with tools to validate SageMaker workloads against all six AWS Well-Architected Framework pillars: Security, Reliability, Performance Efficiency, Cost Optimization, Operational Excellence, and Sustainability.
+## Overview
 
-This server can be used two ways:
+The Amazon SageMaker Well-Architected MCP Server turns the AWS Well-Architected Framework into tools an AI agent runs against your live SageMaker workloads. Point it at an endpoint, training job, notebook instance, or model — or scan a whole region — and it returns prioritized findings and recommendations across all six pillars (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, and Sustainability), using read-only AWS APIs.
 
-* **Locally**, spawned by an MCP-compatible IDE (Kiro, Cursor, VS Code) over stdio — covered in the [Quickstart](#quickstart) below.
-* **Deployed to Amazon Bedrock AgentCore Runtime**, as a hosted, network-reachable service — see [DEPLOYMENT.md](DEPLOYMENT.md).
+## Use case
+
+Teams running machine learning on SageMaker are expected to follow AWS best practices — encryption, VPC isolation, autoscaling, checkpointing, cost controls, and more — but reviewing each resource by hand is slow and easy to skip. This server lets an agent do that review on demand:
+
+* **"Is this endpoint production-ready?"** — validate a single resource and get findings by severity, each with a recommended fix.
+* **"Audit everything in this region."** — scan all endpoints (or all resource types) and get an aggregated HTML report.
+* **"What does the Security pillar check?"** — list the checks behind any pillar.
+
+**Benefits:**
+
+* **50 checks across all six Well-Architected pillars.**
+* **Read-only and safe** — only Describe / List / Get calls; no resource is modified.
+* **Actionable** — every finding carries a severity and a recommendation.
+* **Runs where you work** — locally in your IDE, or hosted on Amazon Bedrock AgentCore for shared/team access.
+
+## Two ways to run
+
+| | Local (IDE) | Hosted (AgentCore) |
+|---|---|---|
+| **How** | Your IDE spawns the server over stdio | A container running on Amazon Bedrock AgentCore Runtime |
+| **Credentials** | Your local AWS credentials | An IAM execution role attached to the runtime |
+| **Best for** | Individual use, quick validation | Shared/team access, integration into a hosted agent |
+| **Setup** | [Quickstart](#quickstart) below | [DEPLOYMENT.md](DEPLOYMENT.md) |
+
+Local has no separate architecture — your IDE runs the process and it calls AWS with your credentials. The hosted path's reference architecture is at the top of [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Available Features
 

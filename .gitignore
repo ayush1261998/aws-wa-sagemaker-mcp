@@ -20,3 +20,6 @@ wa-report.html
 
 # macOS
 .DS_Store
+
+# CDK
+cdk.out/
