@@ -150,3 +150,19 @@ be reconciled in the docs pass (Phase 5).
   full MCP sequence.
 - Added an optional local container-test section and a `cdk destroy` cleanup
   section.
+
+
+---
+
+# README overview and reference architecture
+
+**Date:** 2026-09-25
+**Scope:** `README.md`, `DEPLOYMENT.md`, `.gitignore`.
+
+## What changed
+
+- `README.md`: added an Overview section, a Use case section, and a
+  "Two ways to run" (local vs. AgentCore) comparison above the quickstart.
+- `DEPLOYMENT.md`: added a reference architecture (Mermaid diagram plus a
+  numbered walkthrough) at the top, describing the hosted AgentCore path.
+- `.gitignore`: added `cdk.out/`.
