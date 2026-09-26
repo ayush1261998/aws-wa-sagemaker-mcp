@@ -103,3 +103,50 @@ be reconciled in the docs pass (Phase 5).
   README's tool-count and `--allow-sensitive-data-access` default
   discrepancies + write the implementation guide (local vs. AgentCore
   sections) from what was actually verified above.
+
+
+---
+
+# Double-wrapped tool results fix
+
+**Date:** 2026-09-25
+**Scope:** `awslabs/sagemaker_wa_mcp_server/models.py`,
+`awslabs/sagemaker_wa_mcp_server/wa_validation_handler.py`, `tests/test_server.py`.
+
+## What changed
+
+- Removed the custom `CallToolResult` base model (which shadowed
+  `mcp.types.CallToolResult`) and the four response wrapper models
+  (`ValidateResourceResponse`, `ValidateAllResponse`, `ListResourcesResponse`,
+  `PillarInfoResponse`) from `models.py`. Kept the data models `Finding`,
+  `PillarSummary`, `ResourceSummary`, `PillarCheck`.
+- All five tools now return `mcp.types.CallToolResult` directly — the
+  human-readable summary in `content`, the structured payload in
+  `structuredContent` — via a new `_tool_result()` helper. Previously they
+  returned the custom wrapper, which FastMCP re-serialized into the result
+  text, nesting each tool response inside another.
+- Added `test_tool_result_is_not_double_wrapped` to `tests/test_server.py`.
+
+---
+
+# DEPLOYMENT.md improvements
+
+**Date:** 2026-09-25
+**Scope:** `DEPLOYMENT.md`.
+
+## What changed
+
+- Prerequisites: stated the CDK CLI version floor (2.1141.0) with the
+  `npx aws-cdk@latest` alternative; added `CDK_DOCKER` guidance for
+  non-Docker builders; added an ARM64 emulation note.
+- Deploy: added a virtualenv step, region guidance (`aws sts
+  get-caller-identity`, same-region bootstrap, supported-regions link), and
+  the IAM approval prompt (`cdk diff`, `--require-approval never`).
+- Security: corrected the execution-role description to list the scoped
+  operational permissions the AgentCore construct adds (CloudWatch Logs,
+  X-Ray, `cloudwatch:PutMetricData`, ECR pull, workload identity).
+- Verify: clarified the runtime ID and added `--query status`.
+- Invoke: replaced the sign-only helper with a complete script that runs the
+  full MCP sequence.
+- Added an optional local container-test section and a `cdk destroy` cleanup
+  section.
