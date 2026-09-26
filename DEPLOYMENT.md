@@ -37,20 +37,6 @@ This architecture applies only to the hosted AgentCore path. Running locally
 (the [main README](README.md) quickstart) has no equivalent — your IDE spawns
 the server as a subprocess and it calls AWS with your local credentials.
 
-## Local MCP vs. AgentCore Runtime — which do you need?
-
-| | Local MCP (stdio) | AgentCore Runtime (this guide) |
-|---|---|---|
-| **Where it runs** | Spawned as a subprocess on your machine by your IDE | A managed container hosted by AWS, reachable over the network |
-| **Who can use it** | Only you, on that machine | Any authenticated caller with network access to the endpoint |
-| **AWS credentials** | Your local `~/.aws/credentials` / `AWS_PROFILE` | An IAM execution role attached to the runtime — no local credentials needed by callers |
-| **Setup** | `uvx awslabs.sagemaker-wa-mcp-server` in your IDE's MCP config | Build a container, deploy an AgentCore Runtime resource (this guide) |
-| **Best for** | Individual development, ad hoc validation | Shared/team access, no per-user AWS CLI setup, integration into a hosted agent |
-
-If you only need the tools in your own IDE, use the [main README](README.md)
-quickstart and stop here. Continue below only if you need the server
-reachable over the network by other callers.
-
 ## Overview
 
 The repository ships two deployment artifacts for this path:

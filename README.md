@@ -24,6 +24,7 @@ Teams running machine learning on SageMaker are expected to follow AWS best prac
 | | Local (IDE) | Hosted (AgentCore) |
 |---|---|---|
 | **How** | Your IDE spawns the server over stdio | A container running on Amazon Bedrock AgentCore Runtime |
+| **Who can use it** | Only you, on that machine | Any authenticated caller with network access to the endpoint |
 | **Credentials** | Your local AWS credentials | An IAM execution role attached to the runtime |
 | **Best for** | Individual use, quick validation | Shared/team access, integration into a hosted agent |
 | **Setup** | [Quickstart](#quickstart) below | [DEPLOYMENT.md](DEPLOYMENT.md) |
